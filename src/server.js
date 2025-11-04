@@ -2,10 +2,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
+
+import os from "os"; 
+
 import arbitroRoutes from "./routes/arbitro.js";
 import authRoutes from "./routes/auth.js";
 import newsRoutes from "./routes/news.js";
-
 
 import swaggerUi from "swagger-ui-express"; 
 import swaggerSpec from "./swagger.js";     
@@ -19,7 +21,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -28,13 +29,28 @@ app.use(express.json({ limit: "2mb" }));
 
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
+
+app.use((req, res, next) => {
+  res.set("x-container-id", os.hostname()); 
+  next();
+});
+
 app.get("/", (_req, res) =>
   res.json({
     ok: true,
     name: "node-arbitro-api",
     version: "1.0.0",
+    containerId: os.hostname(), 
   })
 );
+
+app.get("/health", (_req, res) => {
+  res.json({
+    ok: true,
+    containerId: os.hostname(), // evidencia de réplica
+    now: new Date().toISOString(),
+  });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/arbitro", arbitroRoutes);
@@ -49,7 +65,7 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, {
     swaggerOptions: {
-      persistAuthorization: true,       
+      persistAuthorization: true,      
       displayRequestDuration: true,
     },
     customJs: "/assets/swagger-pdf.js",
@@ -64,7 +80,6 @@ app.use((req, res) => {
     path: req.originalUrl,
   });
 });
-
 
 app.listen(PORT, () => {
   console.log(`[node-arbitro-api] Listening on http://localhost:${PORT}`);
